@@ -6,6 +6,7 @@ import * as Clipboard from 'expo-clipboard';
 import DropdownAlert, { DropdownAlertData, DropdownAlertType, } from 'react-native-dropdownalert';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useState } from 'react';
+import {BarCodeScanner} from 'expo-barcode-scanner';
 import QRCodeScanner from 'expo-qrcode-scanner';
 
 const RDCORE_URL = 'https://rnqzf-79-117-157-46.a.free.pinggy.link';
@@ -121,7 +122,7 @@ const KeyModel = {
 };
 
 
-export default function KeysScreen() {
+export default function KeysCopyScreen() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false)
   const toggleShowPassword = () => {
@@ -193,9 +194,9 @@ export default function KeysScreen() {
   
   useEffect(() => {
     (async () => {
-        const { status } = await QRCodeScanner.requestPermissionsAsync();
-        setHasPermission(status == true);
-    })();
+      const { status } = await BarCodeScanner.requestPermissionsAsync();
+      setHasPermission(status === 'granted');
+  })();
     // Cargar datos desde AsyncStorage
     const fetchData = async () => {
       try {
@@ -229,123 +230,14 @@ export default function KeysScreen() {
   }, [keys]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#404462' }}>
-      <SafeAreaView style={{ backgroundColor: '#404462' }}>
-      </SafeAreaView>
-      <View style={{  backgroundColor: '#696b86'}}>
-        <Text style={styles.header}>VKC ACTIVO</Text>
-        <View style={{
-              marginHorizontal : Dimensions.get('window').width / 18,
-              marginTop: 16,
-              backgroundColor: '#404462',
-              borderRadius: 8,
-            }}>
-          <Text style={{
-              color: 'white',
-              fontSize: showPassword ? 40 : 24,
-              lineHeight: showPassword ? 40 : 40,
-              paddingTop: showPassword ? 26 : 16,
-              padding: 16,
-              fontFamily: 'Avenir-Roman',
-              fontWeight: 'bold',
-              textAlign: 'center',
-              }}>
-            {password}
-          </Text>
-        </View>
-        <View style={{height: 120, marginHorizontal : Dimensions.get('window').width / 18}}>
-          <LargeButton
-                title="Sincronizar"
-                iconSuplier={MaterialCommunityIcons}
-                icon="cloud-upload"
-                onPress={ async () => { 
-                  console.log("Uploading...")
-                  const res = fetch(`${AGORAPP_URL}/api/vkc`, {
-                    method: 'POST',
-                    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-                    body: JSON.stringify({dni: "32093901X", vkc: `${keys.public_hash}`})
-                  }).then(response => {
-                    response.json()
-                        .then(data => {
-                            console.log("Uploaded");
-                        });
-                }) 
-              }}
-                accessibilityLabel="Learn more about this purple button"
-          />
-           <View style={{ flex: 1 }}>
-            <QRCodeScanner
-                onScanSuccess={(scanData) => console.log(scanData)}
-                onScanFail={() => console.log('Failed to scan')}
-                // Additional props
-            />
-        </View>
-        </View>
-          
-        <View style={{flexDirection: 'row', alignContent: 'center', justifyContent: 'space-between', marginHorizontal : Dimensions.get('window').width / 18, marginTop: 16, gap: 16}}>
-          <IconButton
-              title={showPassword ? "Mostrar" : "Ocultar"} 
-              iconSuplier={FontAwesome5}
-              icon={showPassword ? "eye" : "eye-slash"} 
-              onPress={() => {toggleShowPassword()}}
-              accessibilityLabel="Learn more about this purple button"
-            />
-            <IconButton
-              title="Copiar"
-              iconSuplier={FontAwesome5}
-              icon="copy"
-              onPress={async () => { 
-                await Clipboard.setStringAsync(password); 
-                await alert({
-                  type: DropdownAlertType.Success,
-                  title: 'Éxito',
-                  message: 'Su clave ha sido copiada al portapapeles',
-              });}}
-              accessibilityLabel="Learn more about this purple button"
-            />
-            <IconButton
-              title="Regenerar"
-              iconSuplier={MaterialCommunityIcons}
-              icon="reload"
-              onPress={ async () => { await AsyncStorage.removeItem('keys'); setModalVisible(true); setPassword('');}}
-              accessibilityLabel="Learn more about this purple button"
-            />
-        </View>
+    <View style={{ flex: 1 }}>
+    <QRCodeScanner
+        onScanSuccess={(scanData) => console.log(scanData)}
+        onScanFail={() => console.log('Failed to scan')}
+        // Additional props
+    />
     </View>
-    <View style={{ flex: 2,  backgroundColor: '#696b86'}}>
-        <Text style={styles.header}>HISTORIAL DE CLAVES</Text>
-        <ScrollView style={styles.keyContainer}>
-          {
-            history.map((item, index) => (
-              <KeyEntry
-                key={index}
-                title={item.vkc.split('-').join(' ')}
-                iconSuplier={FontAwesome5}
-                onPress={ () => console.log(`${item.vkc}`)}
-                icon="eye"
-                accessibilityLabel="Learn more about this purple button"
-              />
-            ))
-          }
-        </ScrollView>
-    </View>
-    <Modal
-        animationType="slide"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={handleCloseModal}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={{lineHeight: 20}}>No se encontró ninguna clave almacenada en el almacenamiento del dispostivo.</Text>
-            <Text style={{margin: 14, fontWeight: 'bold'}}>¿Deseas solicitar un nuevo VKC?</Text>
-            <Button title="Generar" onPress={generateKeys} />
-          </View>
-        </View>
-      </Modal>
-    <DropdownAlert alert={func => (alert = func)} />
-  </View>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
