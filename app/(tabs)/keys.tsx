@@ -6,9 +6,10 @@ import * as Clipboard from 'expo-clipboard';
 import DropdownAlert, { DropdownAlertData, DropdownAlertType, } from 'react-native-dropdownalert';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useState } from 'react';
-import QRCodeScanner from 'expo-qrcode-scanner';
+import { create } from 'react-test-renderer';
+import { red } from 'react-native-reanimated/lib/typescript/Colors';
 
-const RDCORE_URL = 'https://rnqzf-79-117-157-46.a.free.pinggy.link';
+const RDCORE_URL = 'http://192.168.1.170:4321';
 const AGORAPP_URL = 'https://62b4-79-117-157-46.ngrok-free.app';
 
 const LargeButton = (props : any) => {
@@ -98,7 +99,7 @@ const KeyEntry = (props : any) => {
       accessibilityLabel={props.accessibilityLabel || "A Button"}
     >
       <View style={{gap: 14, alignItems:  'center', flexDirection: 'column', justifyContent: 'space-between'}}>
-        <Text style={[styles.text, props.textStyles, {textAlign: 'center', lineHeight: 28}]}>
+        <Text style={[styles.text, props.textStyles, {textAlign: 'center', lineHeight: 28, fontSize: props.fontSize || 16}]}>
           {props.title || "Press Me"}
         </Text>
       </View>
@@ -113,89 +114,73 @@ interface KeyModel {
   created_at: string;
 }
 
-const KeyModel = {
-  vkc: "",
-  private_key: "",
-  public_hash: "",
-  created_at: "",
-};
-
-
 export default function KeysScreen() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false)
   const toggleShowPassword = () => {
+    if(keys != null){
       setShowPassword(!showPassword);
       showPassword ? setPassword(keys.vkc.split('-').join(' ')) : setPassword(keys.vkc.split('-').join(' ').replace(/\S/gm, '·'));
+    }
   };
 
   let alert = (_data: DropdownAlertData) => new Promise<DropdownAlertData>(res => res);
 
-  const [keys, setKeys] = useState(KeyModel);
+  const [keys, setKeys] = useState<KeyModel>();
   const [history, setHistory] = useState<KeyModel[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
+  const [removeAllModalVisible, setRemoveAllModalVisible] = useState(false);
   const handleCloseModal = () => { setModalVisible(false); }
   const generateKeys = async () => {
-
     // Si existen claves, guardarlas en el historial
     if(keys != null){
+      console.log("Saving old keys...")
       AsyncStorage.getItem('history').then((history) => {
         let storedHistory = [];
-        if (history !== null) {
+        if (history != null) {
           storedHistory = JSON.parse(history);
           console.log(`[KeysScreen] ${history}`);
           storedHistory.unshift(keys);
-          AsyncStorage.setItem('history', JSON.stringify(storedHistory));
-          setHistory(storedHistory);
         }
+        AsyncStorage.setItem('history', JSON.stringify(storedHistory));
+        setHistory(storedHistory);
+        console.log("Old keys saved");
       });
     }
+    else{
+      console.log("Not old key found");
+    }
 
-    const newKeys = await fetch(`${RDCORE_URL}/create-keys`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    })
-    .then((newKeys) => newKeys.json())
-    .then((data) => {
-      KeyModel.private_key = data.private_key;
-      KeyModel.public_hash = data.public_hash;
-    })
-    .catch((error) => {
-      console.error('Error:', error);
-    });
+    // Try to request new keys 
+    try{
+      console.log(`Creating new keys...`);
 
-    console.log(KeyModel.public_hash);
+      var keys_model: KeyModel;
+      const create_keys_response = await (await fetch(`${RDCORE_URL}/create-keys`, { method: 'GET', headers: { 'Content-Type': 'application/json' } })).json();
+      console.log(`[RDCore Query] create-keys\n public_hash: ${create_keys_response.public_hash}\n private_key: ${create_keys_response.private_key}`);
 
-    const newVKC = fetch(`${RDCORE_URL}/generate-keycode/${KeyModel.public_hash}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    })
-    .then((newVKC) => newVKC.json())
-    .then((data) => {
-      console.log(data);
-      KeyModel.vkc = data.keycode;
-      AsyncStorage.setItem('keys', JSON.stringify(KeyModel));
+      const vkc_generate_response = await (await fetch(`${RDCORE_URL}/generate-keycode/${create_keys_response.public_hash}`, { method: 'GET', headers: { 'Content-Type': 'application/json' } })).json();
+      console.log(`[RDCore Query] generate-keycode\n vkc: ${vkc_generate_response.keycode}`);
+
+      keys_model = {
+        vkc: vkc_generate_response.keycode,
+        private_key: create_keys_response.private_key,
+        public_hash: create_keys_response.public_hash,
+        created_at: Date.now().toString()
+      };
+      
       setModalVisible(false);
+      AsyncStorage.setItem('keys', JSON.stringify(keys_model));
+      setKeys(keys_model);
+      setPassword(keys_model.vkc.split('-').join(' '));
 
-      setKeys(KeyModel);
-      setPassword(keys.vkc.split('-').join(' '));
-    }).catch((error) => {
-      console.error('Error:', error);
-    });
+      console.log(`New keys created succesfully!`);
+    } catch(error){
+        console.error('Error:', error);
+    }
   }
-
-  // Solicitar permisos 
-  const [hasPermission, setHasPermission] = useState(false);
   
   useEffect(() => {
-    (async () => {
-        const { status } = await QRCodeScanner.requestPermissionsAsync();
-        setHasPermission(status == true);
-    })();
     // Cargar datos desde AsyncStorage
     const fetchData = async () => {
       try {
@@ -204,7 +189,9 @@ export default function KeysScreen() {
         if (stored_keys !== null) {
           // Si hay datos, guardarlos en el estado
           setKeys(JSON.parse(stored_keys));
-          setPassword(keys.vkc);
+          if(keys != undefined){
+            setPassword(keys.vkc);
+          }
         } else {
           // Si no hay datos, mostrar el modal
           setModalVisible(true);
@@ -259,27 +246,22 @@ export default function KeysScreen() {
                 iconSuplier={MaterialCommunityIcons}
                 icon="cloud-upload"
                 onPress={ async () => { 
-                  console.log("Uploading...")
-                  const res = fetch(`${AGORAPP_URL}/api/vkc`, {
-                    method: 'POST',
-                    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-                    body: JSON.stringify({dni: "32093901X", vkc: `${keys.public_hash}`})
-                  }).then(response => {
-                    response.json()
-                        .then(data => {
-                            console.log("Uploaded");
-                        });
-                }) 
+                  console.log("Uploading keys...")
+                  try{
+                    if (keys == null) throw "key is not initalized"
+                    fetch(`${AGORAPP_URL}/api/vkc`, {
+                      method: 'POST',
+                      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+                      body: JSON.stringify({dni: "32093901X", vkc: `${keys.public_hash}`})
+                    }); 
+                    console.log("Keys uploaded succesfully!...")
+                  } catch (error) {
+                    console.error('Error uploading keys, ', error);
+                  }
+                    
               }}
-                accessibilityLabel="Learn more about this purple button"
+              accessibilityLabel="Upload keys to agorapp"
           />
-           <View style={{ flex: 1 }}>
-            <QRCodeScanner
-                onScanSuccess={(scanData) => console.log(scanData)}
-                onScanFail={() => console.log('Failed to scan')}
-                // Additional props
-            />
-        </View>
         </View>
           
         <View style={{flexDirection: 'row', alignContent: 'center', justifyContent: 'space-between', marginHorizontal : Dimensions.get('window').width / 18, marginTop: 16, gap: 16}}>
@@ -315,19 +297,25 @@ export default function KeysScreen() {
     <View style={{ flex: 2,  backgroundColor: '#696b86'}}>
         <Text style={styles.header}>HISTORIAL DE CLAVES</Text>
         <ScrollView style={styles.keyContainer}>
-          {
-            history.map((item, index) => (
+          {history.map((item, index) => (
+            item.vkc ? (
               <KeyEntry
                 key={index}
-                title={item.vkc.split('-').join(' ')}
+                title={showPassword? item.vkc.split('-').join(' ').replace(/\S/gm, '·') : item.vkc.split('-').join(' ')}
+                fontSize = {showPassword? 26 : 16}
                 iconSuplier={FontAwesome5}
-                onPress={ () => console.log(`${item.vkc}`)}
+                onPress={() => console.log(`${item.vkc}`)}
                 icon="eye"
                 accessibilityLabel="Learn more about this purple button"
               />
-            ))
+            ) : null
+          ))}
+          { history.length > 0 && 
+              <Text onPress={ () => setRemoveAllModalVisible(true) } style={{textDecorationLine: 'underline', color: 'white', textAlign: 'center', marginBottom: 24}}>{'Remove all'}</Text>
           }
         </ScrollView>
+            
+
     </View>
     <Modal
         animationType="slide"
@@ -337,9 +325,28 @@ export default function KeysScreen() {
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
-            <Text style={{lineHeight: 20}}>No se encontró ninguna clave almacenada en el almacenamiento del dispostivo.</Text>
-            <Text style={{margin: 14, fontWeight: 'bold'}}>¿Deseas solicitar un nuevo VKC?</Text>
+            <Text style={{lineHeight: 20, color: 'white'}}>No se encontró ninguna clave almacenada en el almacenamiento del dispostivo.</Text>
+            <Text style={{margin: 14, fontWeight: 'bold', color: 'white'}}>¿Deseas solicitar un nuevo VKC?</Text>
             <Button title="Generar" onPress={generateKeys} />
+          </View>
+        </View>
+      </Modal>
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={removeAllModalVisible}
+        onRequestClose={ () => setRemoveAllModalVisible(false) }
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={{margin: 14, fontWeight: 'bold', color: 'orange', textAlign: 'center'}}>¡ATENCIÓN!{"\n"}ESTA ACCIÓN ES IRREVOCABLE</Text>
+            <Text style={{lineHeight: 20, color: 'white', fontSize: 18, marginBottom: 14}}>¿Estás seguro que quieres borrar todas tus claves guardadas?.</Text>
+            <Button title="BORRAR" color={'red'} onPress= { () => {
+                setHistory([]);
+                AsyncStorage.removeItem('history');
+                setRemoveAllModalVisible(false);
+              }
+            } />
           </View>
         </View>
       </Modal>
@@ -405,7 +412,7 @@ const styles = StyleSheet.create({
   modalContent: {
     width: 300,
     padding: 20,
-    backgroundColor: 'white',
+    backgroundColor: '#404462',
     borderRadius: 10,
     alignItems: 'center',
   },

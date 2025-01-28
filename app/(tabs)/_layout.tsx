@@ -42,6 +42,15 @@ export default function TabLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="votescan"
+        options={{
+          title: 'Escáner',
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarIcon name={focused ? 'qr-code-outline' : 'qr-code'} color={color} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }
