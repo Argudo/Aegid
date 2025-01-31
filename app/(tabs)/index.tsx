@@ -1,39 +1,42 @@
-import { Image, StyleSheet, Platform, Dimensions } from 'react-native';
-import { View, Text,  Button, Pressable, TouchableHighlight } from 'react-native';
+import React, { forwardRef } from "react";
 import { FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Link } from 'expo-router';
+import { Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AppButton from '../../components/AppButton'
 
-const AppButton = (props : any) => {
-  return (
-    <Pressable
-      style={({ pressed }) => [
-        {
-          backgroundColor: props.disabled
-            ? "#ccc"
-            : pressed
-            ? "#9699b0"
-            : '#404462',
-        },
-        styles.container,
-        props.buttonStyles,
-      ]}
-      disabled={props.disabled}
-      onPress={props.onPress}
-      accessible
-      accessibilityLabel={props.accessibilityLabel || "A Button"}
-    >
-      <View style={{gap: 24, alignItems:  'center'}}>
-        {props.iconSuplier === FontAwesome5 ? 
-        <FontAwesome5 name={props.icon} size={24} color="white" /> 
-        : 
-        <MaterialCommunityIcons name={props.icon} size={32} color="white" />}
-        <Text style={[styles.text, props.textStyles]}>
-          {props.title || "Press Me"}
-        </Text>
-      </View>
-    </Pressable>
-  );
-};
+// const AppButton = forwardRef((props: any, ref: any) => {
+  
+//   return (
+//     <Pressable
+//       style={({ pressed }) => [
+//         {
+//           backgroundColor: props.disabled
+//             ? "#ccc"
+//             : pressed
+//             ? "#9699b0"
+//             : '#404462',
+//         },
+//         styles.container,
+//         props.buttonStyles,
+//       ]}
+//       disabled={props.disabled}
+//       onPress={props.onPress}
+//       accessible
+//       accessibilityLabel={props.accessibilityLabel || "A Button"}
+//     >
+//       <View style={{gap: 24, alignItems:  'center'}}>
+//         {props.iconSuplier === FontAwesome5 ? 
+//         <FontAwesome5 name={props.icon} size={24} color="white" /> 
+//         : 
+//         <MaterialCommunityIcons name={props.icon} size={32} color="white" />}
+//         <Text style={[styles.text, props.textStyles]}>
+//           {props.title || "Press Me"}
+//         </Text>
+//       </View>
+//     </Pressable>
+//   );
+// });
 
 export default function HomeScreen() {
   return (
@@ -44,6 +47,7 @@ export default function HomeScreen() {
       <View style={{ flex: 1, padding: 'auto', alignSelf: 'stretch', backgroundColor: '#696b86'}}>
         <View style={{ margin: 'auto', gap: 24, marginHorizontal: Dimensions.get('window').width / 18 }}>
           <View style={styles.titleContainer}>
+          <Link href={"/scanner"} asChild>
             <AppButton
                 title="FIRMAR VOTO"
                 iconSuplier={FontAwesome5}
@@ -51,6 +55,7 @@ export default function HomeScreen() {
                 onPress={() => {}}
                 accessibilityLabel="Learn more about this purple button"
               />
+          </Link>
           </View>
           <View style={styles.titleContainer}>
             <AppButton

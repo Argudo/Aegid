@@ -25,6 +25,15 @@ export default function TabLayout() {
         },
       }}>
       <Tabs.Screen
+        name="election"
+        options={{
+          title: 'Votar',
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarIcon name={focused ? 'mail' : 'mail-outline'} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="index"
         options={{
           title: 'Inicio',
@@ -39,15 +48,6 @@ export default function TabLayout() {
           title: 'Claves',
           tabBarIcon: ({ color, focused }) => (
             <TabBarIcon name={focused ? 'key' : 'key-outline'} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="votescan"
-        options={{
-          title: 'Escáner',
-          tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name={focused ? 'qr-code-outline' : 'qr-code'} color={color} />
           ),
         }}
       />

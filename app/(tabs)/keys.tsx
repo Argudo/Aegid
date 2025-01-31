@@ -10,7 +10,7 @@ import { create } from 'react-test-renderer';
 import { red } from 'react-native-reanimated/lib/typescript/Colors';
 
 const RDCORE_URL = 'http://192.168.1.170:4321';
-const AGORAPP_URL = 'https://62b4-79-117-157-46.ngrok-free.app';
+const AGORAPP_URL = 'http://192.168.1.170:8080';
 
 const LargeButton = (props : any) => {
   return (
@@ -249,12 +249,15 @@ export default function KeysScreen() {
                   console.log("Uploading keys...")
                   try{
                     if (keys == null) throw "key is not initalized"
-                    fetch(`${AGORAPP_URL}/api/vkc`, {
+
+                    const vkc_upload_response = await fetch(`${AGORAPP_URL}/api/vkc`, {
                       method: 'POST',
                       headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
                       body: JSON.stringify({dni: "32093901X", vkc: `${keys.public_hash}`})
                     }); 
+
                     console.log("Keys uploaded succesfully!...")
+                    console.log(`[Agorapp Query] response: ${vkc_upload_response.status}`);
                   } catch (error) {
                     console.error('Error uploading keys, ', error);
                   }
