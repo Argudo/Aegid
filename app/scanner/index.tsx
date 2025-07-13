@@ -1,21 +1,29 @@
-import { Camera, CameraView } from "expo-camera";
-import { Stack } from "expo-router";
-import { useRouter } from 'expo-router';
+import React, { useEffect, useRef, useState } from "react";
 import {
   AppState,
-  Linking,
   Platform,
   SafeAreaView,
   StatusBar,
   StyleSheet,
+  Text,
 } from "react-native";
-import { Overlay } from "./Overlay";
-import { useEffect, useRef } from "react";
+import { Camera, CameraView } from "expo-camera";
+import { Stack } from "expo-router";
+import { useRouter } from "expo-router";
+import Overlay from "./Overlay";
 
 export default function QRHome() {
+  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const qrLock = useRef(false);
   const appState = useRef(AppState.currentState);
   const router = useRouter();
+
+  useEffect(() => {
+    (async () => {
+      const { status } = await Camera.requestCameraPermissionsAsync();
+      setHasPermission(status === "granted");
+    })();
+  }, []);
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextAppState) => {
@@ -27,11 +35,20 @@ export default function QRHome() {
       }
       appState.current = nextAppState;
     });
-
-    return () => {
-      subscription.remove();
-    };
+    return () => subscription.remove();
   }, []);
+
+  if (hasPermission === null) {
+    return null; // o un loading
+  }
+
+  if (hasPermission === false) {
+    return (
+      <SafeAreaView style={styles.centered}>
+        <Text>No se concedió permiso para la cámara.</Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={StyleSheet.absoluteFillObject}>
@@ -47,12 +64,12 @@ export default function QRHome() {
         facing="back"
         onBarcodeScanned={({ data }) => {
           if (data && !qrLock.current) {
-            qrLock.current = true; 
-            console.log(`QR Found with data ${data}`);
+            qrLock.current = true;
+            console.log(`QR Encontrado con data: ${data}`);
             router.push(`/election?uuid=${encodeURIComponent(data)}`);
             setTimeout(() => {
               qrLock.current = false;
-            }, 500); 
+            }, 1000);
           }
         }}
       />
@@ -60,3 +77,11 @@ export default function QRHome() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  centered: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+});

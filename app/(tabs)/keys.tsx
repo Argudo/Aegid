@@ -1,5 +1,4 @@
-
-import { View, Text,  StyleSheet, Pressable, Dimensions, Modal, Button, ScrollView } from 'react-native';
+import { View, Text,  StyleSheet, Pressable, Dimensions, Modal, Button, ScrollView, TextInput } from 'react-native';
 import { FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
@@ -9,8 +8,8 @@ import React, { useEffect, useState } from 'react';
 import { create } from 'react-test-renderer';
 import { red } from 'react-native-reanimated/lib/typescript/Colors';
 
-const RDCORE_URL = 'http://192.168.1.170:4321';
-const AGORAPP_URL = 'http://192.168.1.170:8080';
+const RDCORE_URL = 'http://100.72.111.104:4321';
+const AGORAPP_URL = 'http://100.72.111.104:8080';
 
 const LargeButton = (props : any) => {
   return (
@@ -130,6 +129,8 @@ export default function KeysScreen() {
   const [history, setHistory] = useState<KeyModel[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [removeAllModalVisible, setRemoveAllModalVisible] = useState(false);
+  const [syncModalVisible, setSyncModalVisible] = useState(false);
+  const [dni, setDni] = useState('');
   const handleCloseModal = () => { setModalVisible(false); }
   const generateKeys = async () => {
     // Si existen claves, guardarlas en el historial
@@ -178,7 +179,31 @@ export default function KeysScreen() {
     } catch(error){
         console.error('Error:', error);
     }
-  }
+  } 
+
+  const syncKeys = async () => {
+    console.log("Uploading keys...");
+    try {
+      if (keys == null) throw 'key is not initalized';
+
+      const vkc_upload_response = await fetch(`${AGORAPP_URL}/api/vkc`, {
+        method: 'POST',
+        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dni: dni, vkc: `${keys.public_hash}` })
+      });
+
+      console.log("Keys uploaded succesfully!...");
+      console.log(`[Agorapp Query] response: ${vkc_upload_response.status}`);
+      setSyncModalVisible(false);
+      await alert({
+        type: DropdownAlertType.Success,
+        title: 'Éxito',
+        message: 'Sincronización completada correctamente',
+      });
+    } catch (error) {
+      console.error('Error uploading keys, ', error);
+    }
+  };
   
   useEffect(() => {
     // Cargar datos desde AsyncStorage
@@ -245,25 +270,8 @@ export default function KeysScreen() {
                 title="Sincronizar"
                 iconSuplier={MaterialCommunityIcons}
                 icon="cloud-upload"
-                onPress={ async () => { 
-                  console.log("Uploading keys...")
-                  try{
-                    if (keys == null) throw "key is not initalized"
-
-                    const vkc_upload_response = await fetch(`${AGORAPP_URL}/api/vkc`, {
-                      method: 'POST',
-                      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-                      body: JSON.stringify({dni: "32093901X", vkc: `${keys.public_hash}`})
-                    }); 
-
-                    console.log("Keys uploaded succesfully!...")
-                    console.log(`[Agorapp Query] response: ${vkc_upload_response.status}`);
-                  } catch (error) {
-                    console.error('Error uploading keys, ', error);
-                  }
-                    
-              }}
-              accessibilityLabel="Upload keys to agorapp"
+                onPress={() => setSyncModalVisible(true)}
+                accessibilityLabel="Upload keys to agorapp"
           />
         </View>
           
@@ -316,8 +324,28 @@ export default function KeysScreen() {
           { history.length > 0 && 
               <Text onPress={ () => setRemoveAllModalVisible(true) } style={{textDecorationLine: 'underline', color: 'white', textAlign: 'center', marginBottom: 24}}>{'Remove all'}</Text>
           }
-        </ScrollView>
-            
+          </ScrollView>
+
+    <Modal
+        animationType="slide"
+        transparent={true}
+        visible={syncModalVisible}
+        onRequestClose={() => setSyncModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={{marginBottom: 14, color: 'white'}}>Introduce el DNI del usuario</Text>
+            <TextInput
+              style={[styles.input, {backgroundColor: '#696b86', width: '100%', marginBottom: 10, color: '#fff'}]}
+              value={dni}
+              onChangeText={setDni}
+              placeholder="DNI"
+            />
+            <Button title="Sincronizar" onPress={syncKeys} />
+          </View>
+        </View>
+      </Modal>
+
 
     </View>
     <Modal
@@ -414,6 +442,7 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     width: 300,
+    height: 150,
     padding: 20,
     backgroundColor: '#404462',
     borderRadius: 10,
