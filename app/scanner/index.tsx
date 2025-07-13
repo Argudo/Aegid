@@ -66,7 +66,7 @@ export default function QRHome() {
           if (data && !qrLock.current) {
             qrLock.current = true;
             console.log(`QR Encontrado con data: ${data}`);
-            router.push(`/election?uuid=${encodeURIComponent(data)}`);
+            router.replace(`/election?uuid=${encodeURIComponent(data)}`);
             setTimeout(() => {
               qrLock.current = false;
             }, 1000);
